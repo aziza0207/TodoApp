@@ -6,12 +6,14 @@ def get_todo(db: Session, todo_id: int):
     return db.query(models.Todo).filter(models.Todo.id == todo_id).first()
 
 
-def create_todo(db: Session, todo: schemas.TodoBase):
+def create_todo(db: Session, todo: schemas.TodoBase, owner_id):
     db_todo = models.Todo(
         title=todo.title,
         description=todo.description,
         is_complete=todo.is_complete,
         priority=todo.priority,
+        owner_id=owner_id
+
     )
     db.add(db_todo)
     db.commit()

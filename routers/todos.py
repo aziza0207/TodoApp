@@ -7,7 +7,7 @@ from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 
-router = APIRouter(prefix="/api/todos", tags=["Todo"])
+router = APIRouter(prefix="/todos", tags=["Todo"])
 
 
 def get_db():
@@ -19,16 +19,19 @@ def get_db():
 
 
 db_dependency = Annotated[Session, Depends(get_db)]
+user_dependency = Annotated[dict, Depends(services.get_current_user)]
 
 
-@router.get("/", response_model=list[schemas.Todo], status_code=status.HTTP_200_OK)
-async def get_todos(db: db_dependency, skip: int = 0, limit: int = 20):
-    return db.query(models.Todo).offset(skip).limit(limit).all()
+@router.get("/", status_code=status.HTTP_200_OK)
+async def get_todos(user: user_dependency, db: db_dependency, skip: int = 0, limit: int = 20):
+    return db.query(models.Todo).filter(models.Todo.owner_id == user.get("id")).offset(skip).limit(limit).all()
 
 
-@router.post("/", response_model=schemas.TodoBase, status_code=status.HTTP_201_CREATED)
-async def create_todo(todo: schemas.TodoBase, db: db_dependency):
-    return services.create_todo(db=db, todo=todo)
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def create_todo(user: user_dependency, todo: schemas.TodoBase, db: db_dependency):
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication Failed")
+    return services.create_todo(db=db, todo=todo, owner_id=user.get("id"))
 
 
 @router.get("/{todo_id}/", response_model=schemas.Todo, status_code=status.HTTP_200_OK)
@@ -48,7 +51,7 @@ async def update_todo(db: db_dependency, todo: schemas.TodoBase, todo_id: int = 
 
 
 @router.delete("/{todo_id}/", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_product(db: db_dependency, todo_id: int = Path(gt=0)):
+async def delete_todo(db: db_dependency, todo_id: int = Path(gt=0)):
     db_todo = services.get_todo(db, todo_id=todo_id)
     if db_todo is None:
         HTTPException(status_code=404, detail="Todo not found!")

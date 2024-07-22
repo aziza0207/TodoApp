@@ -3,8 +3,12 @@ from pydantic import BaseModel, Field
 
 class UserCreate(BaseModel):
     first_name: str
-    username :str
+    username: str
     last_name: str
     email: str
     password: str
 
+
+class TokenData(BaseModel):
+    username: str
+    id: int
